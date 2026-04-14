@@ -1,0 +1,36 @@
+/* BakeCake Global Styles */
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+}
+
+/* Smooth transitions on interactive elements */
+.btn, .nav-link, .card { transition: all 0.2s ease; }
+
+/* Card hover lift */
+.card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.1) !important; }
+
+/* Input focus ring */
+.form-control:focus {
+  border-color: #e8748a;
+  box-shadow: 0 0 0 3px rgba(232, 116, 138, 0.15);
+}
+
+/* Bootstrap overrides for BakeCake theme */
+.btn-primary { background: linear-gradient(135deg,#2d3a5e,#3d4f82); border: none; }
+.btn-primary:hover { background: linear-gradient(135deg,#3d4f82,#5b6fb3); border: none; }
+
+/* Sticky sidebar scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: #c9cdd6; border-radius: 3px; }
+
+/* Spinner overlay */
+.loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(253,246,240,0.95);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9999;
+}
