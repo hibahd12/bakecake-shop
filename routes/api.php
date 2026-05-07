@@ -20,8 +20,10 @@ use Illuminate\Support\Facades\Route;
 // ─── Public Routes (no auth required) ────────────────────────────────────────
 
 // Authentication
-Route::post('/register', [AuthController::class, 'register']); // POST /api/register
-Route::post('/login',    [AuthController::class, 'login']);    // POST /api/login
+Route::post('/register',             [AuthController::class, 'register']);            // POST /api/register
+Route::post('/verify-email',         [AuthController::class, 'verifyEmail']);         // POST /api/verify-email
+Route::post('/resend-verification',  [AuthController::class, 'resendVerification']);  // POST /api/resend-verification
+Route::post('/login',                [AuthController::class, 'login']);               // POST /api/login
 
 // Public product catalog
 Route::get('/products',     [ProductController::class, 'index']); // GET  /api/products

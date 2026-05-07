@@ -37,8 +37,8 @@ function Spinner() {
       alignItems:'center', justifyContent:'center',
       background:'linear-gradient(160deg,#FEE2C0,#FDCFA0)',
     }}>
-      <div style={{ fontSize:64, marginBottom:16 }}>🎂</div>
-      <p style={{ color:'#a0522d', fontWeight:600 }}>Chargement…</p>
+      <img src="/logo.png" alt="BakeCake" style={{ height: 120, marginBottom: 20, objectFit: 'contain' }} />
+      <p style={{ color:'#8c4623', fontWeight:600 }}>Chargement…</p>
     </div>
   );
 }

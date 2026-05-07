@@ -6,7 +6,7 @@ import axios from 'axios';
 // In development, it falls back to '/api' which is proxied by Vite to localhost:8000
 const BACKEND_URL = import.meta.env.VITE_API_URL || '';
 const API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : '/api';
-const SANCTUM_BASE = BACKEND_URL || undefined; // undefined = use Vite proxy in dev
+const SANCTUM_BASE = BACKEND_URL || ''; // empty string overrides the `/api` default baseURL
 
 axios.defaults.baseURL = API_BASE;
 axios.defaults.xsrfCookieName = 'XSRF-TOKEN';
@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  /** Register: creates account and logs in */
+  /** Register: creates account and logs in immediately — no OTP step. */
   const register = async (form) => {
     await axios.get('/sanctum/csrf-cookie', { baseURL: SANCTUM_BASE });
     const { data } = await axios.post('/register', form);
@@ -78,6 +78,23 @@ export function AuthProvider({ children }) {
     localStorage.setItem('bakecake_user',  JSON.stringify(data.user));
     setUser(data.user);
     return data.user;
+  };
+
+  /** Verify email: Step 2 – submit OTP code. On success, logs the user in. */
+  const verifyEmail = async (email, code) => {
+    await axios.get('/sanctum/csrf-cookie', { baseURL: SANCTUM_BASE });
+    const { data } = await axios.post('/verify-email', { email, code });
+    localStorage.setItem('bakecake_token', data.token);
+    localStorage.setItem('bakecake_user',  JSON.stringify(data.user));
+    setUser(data.user);
+    return data.user;
+  };
+
+  /** Resend verification: requests a fresh OTP for an unverified email. */
+  const resendVerification = async (email) => {
+    await axios.get('/sanctum/csrf-cookie', { baseURL: SANCTUM_BASE });
+    const { data } = await axios.post('/resend-verification', { email });
+    return data;
   };
 
   /** Logout: calls API then clears local state */
@@ -89,7 +106,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, verifyEmail, resendVerification, logout }}>
       {children}
     </AuthContext.Provider>
   );

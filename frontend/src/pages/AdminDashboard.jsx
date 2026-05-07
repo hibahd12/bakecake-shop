@@ -2,6 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, axios } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
+/* ─── Image URL helper ──────────────────────────────────────────────────────
+ * Products store their image path as e.g. "products/abc.jpg" (relative to
+ * the Laravel `public` disk, served at /storage/…).  Full URL = BACKEND/storage/path.
+ * In dev, Vite proxies /storage → Laravel:8000/storage, so we just use /storage/…
+ */
+const BACKEND_URL = import.meta.env.VITE_API_URL || '';
+function imgSrc(path) {
+  if (!path) return null;
+  // Already a full URL
+  if (path.startsWith('http')) return path;
+  const base = BACKEND_URL || '';
+  return `${base}/storage/${path}`;
+}
+
 /* ─── Chart.js imports ─────────────────────────────────────────── */
 import {
   Chart as ChartJS,
@@ -31,6 +45,13 @@ export default function AdminDashboard() {
   const [users, setUsers]             = useState([]);
   const [contacts, setContacts]       = useState([]);
   const [loading, setLoading]         = useState(true);
+  const [clientSearch, setClientSearch] = useState('');
+
+  /* ── Product CRUD modal state ─────────────────────────────── */
+  const [showModal, setShowModal]   = useState(false);
+  const [editProduct, setEditProduct] = useState(null); // null = add, object = edit
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [productError, setProductError]   = useState('');
 
   /* ── Load all data ─────────────────────────────────────────── */
   useEffect(() => { loadAll(); }, []);
@@ -75,6 +96,44 @@ export default function AdminDashboard() {
     if (!window.confirm('Confirmer la suppression ?')) return;
     try { await axios.delete(`/admin/users/${id}`); loadAll(); }
     catch { alert('Une erreur est survenue.'); }
+  };
+
+  /* ── Product CRUD handlers ─────────────────────────────────── */
+  const openAddProduct = () => { setEditProduct(null); setProductError(''); setShowModal(true); };
+  const openEditProduct = (p) => { setEditProduct(p); setProductError(''); setShowModal(true); };
+  const closeModal = () => setShowModal(false);
+
+  const saveProduct = async (formData, id) => {
+    setSavingProduct(true);
+    setProductError('');
+    try {
+      if (id) {
+        await axios.post(`/products/${id}?_method=PUT`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        await axios.post('/products', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+      setShowModal(false);
+      loadAll();
+    } catch (err) {
+      const msgs = err.response?.data?.errors;
+      if (msgs) {
+        setProductError(Object.values(msgs).flat().join(' '));
+      } else {
+        setProductError(err.response?.data?.message || 'Erreur lors de la sauvegarde.');
+      }
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
+  const deleteProduct = async (id) => {
+    if (!window.confirm('Supprimer ce produit ?')) return;
+    try { await axios.delete(`/products/${id}`); loadAll(); }
+    catch { alert('Erreur lors de la suppression.'); }
   };
 
   /* ── Derived stats from real orders ───────────────────────── */
@@ -207,8 +266,8 @@ export default function AdminDashboard() {
   if (loading) return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f5f0ea' }}>
       <div style={{ textAlign:'center' }}>
-        <div style={{ fontSize:56, marginBottom:12 }}>🎂</div>
-        <p style={{ color:'#888' }}>Chargement en cours…</p>
+        <img src="/logo.png" alt="BakeCake" style={{ height: 100, marginBottom: 16, objectFit: 'contain' }} />
+        <p style={{ color:'#888', fontWeight: 500 }}>Chargement en cours…</p>
       </div>
     </div>
   );
@@ -242,8 +301,6 @@ export default function AdminDashboard() {
             { id:'commandes', icon:'📦', label:'Commandes'  },
             { id:'clients',   icon:'👤', label:'Clients'    },
             { id:'messages',  icon:'✉️', label:'Messages'   },
-            { id:'rapports',  icon:'📈', label:'Rapports'   },
-            { id:'params',    icon:'⚙️', label:'Paramètres' },
           ].map(item => (
             <button key={item.id}
               onClick={() => setActiveNav(item.id)}
@@ -297,7 +354,7 @@ export default function AdminDashboard() {
           boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
         }}>
           {/* Search */}
-          <div style={{
+          {/* <div style={{
             display:'flex', alignItems:'center', gap:8,
             background:'#f5f5f5', border:'1px solid #e8e8e8',
             borderRadius:8, padding:'6px 14px', flex:1, maxWidth:340,
@@ -309,10 +366,11 @@ export default function AdminDashboard() {
             }}/>
           </div>
 
-          <div style={{ flex:1 }}/>
+          <div style={{ flex:1 }}/> */}
 
           {/* Bell */}
           <button style={{
+            marginLeft: 'auto',
             position:'relative', background:'#f5f5f5',
             border:'1px solid #e8e8e8', borderRadius:8,
             width:36, height:36, cursor:'pointer', fontSize:16,
@@ -516,7 +574,7 @@ export default function AdminDashboard() {
                   <div style={{ padding:'14px' }}>
                     {/* Action buttons */}
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
-                      <button style={{
+                      <button onClick={openAddProduct} style={{
                         background:'#5e453a', color:'#fff',
                         border:'none', borderRadius:6, padding:'9px 8px',
                         fontWeight:600, fontSize:12, cursor:'pointer',
@@ -532,7 +590,7 @@ export default function AdminDashboard() {
                       Produits — État des Stocks :
                     </div>
 
-                    {/* Stock items */}
+                    {/* Stock items — with real product images */}
                     {gridProducts.map((p, i) => (
                       <div key={p.id} style={{
                         display:'flex', alignItems:'center', gap:10,
@@ -540,16 +598,21 @@ export default function AdminDashboard() {
                       }}>
                         <div style={{
                           width:42, height:42, borderRadius:8, overflow:'hidden', flexShrink:0,
-                          background:'#f5ece0', display:'flex', alignItems:'center', justifyContent:'center',
-                          fontSize:18,
-                        }}>🎂</div>
+                          background:'#f5ece0',
+                        }}>
+                          {imgSrc(p.image)
+                            ? <img src={imgSrc(p.image)} alt={p.name}
+                                style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                            : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🎂</div>
+                          }
+                        </div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontSize:12, fontWeight:600, color:'#333', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                             {p.name}
                           </div>
                           <div style={{ fontSize:11, color:'#aaa' }}>Stock: {p.stock}</div>
                         </div>
-                        <button style={{
+                        <button onClick={() => openEditProduct(p)} style={{
                           width:26, height:26, borderRadius:6,
                           border:'1px solid #eee', background:'#f9f9f9',
                           cursor:'pointer', fontSize:12, color:'#888',
@@ -607,79 +670,222 @@ export default function AdminDashboard() {
           {/* ════ CATALOGUE TAB ════════════════════════════════ */}
           {activeNav === 'catalogue' && (
             <>
-              <h1 style={{ fontSize:20, fontWeight:700, marginBottom:16 }}>Catalogue</h1>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
-                {products.map(p=>(
-                  <div key={p.id} style={{ background:'#fff', borderRadius:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-                    <div style={{ height:90, background:'linear-gradient(135deg,#fdf6f0,#fdeaea)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:48 }}>🎂</div>
-                    <div style={{ padding:'12px 14px' }}>
-                      <div style={{ fontWeight:700, marginBottom:4 }}>{p.name}</div>
-                      <div style={{ fontSize:11, color:'#888', marginBottom:8 }}>{p.description}</div>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                        <span style={{ fontWeight:700, color:'#5e453a', fontSize:16 }}>{p.price} MAD</span>
+              {/* Header row */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+                <h1 style={{ fontSize:20, fontWeight:700, margin:0 }}>Catalogue des Produits</h1>
+                
+                <button onClick={openAddProduct} style={{
+                  background:'linear-gradient(135deg,#5e453a,#3e2e26)',
+                  color:'#fff', border:'none', borderRadius:8,
+                  padding:'9px 18px', fontWeight:700, fontSize:13, cursor:'pointer',
+                  display:'flex', alignItems:'center', gap:6,
+                  boxShadow:'0 2px 8px rgba(94,69,58,0.25)',
+                }}>
+                  <span style={{ fontSize:16 }}>＋</span> Nouveau Produit
+                </button>
+              </div>
+
+              {/* Product grid */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:16 }}>
+                {products.map(p => (
+                  <div key={p.id} style={{
+                    background:'#fff', borderRadius:14,
+                    boxShadow:'0 2px 8px rgba(0,0,0,0.07)',
+                    overflow:'hidden', display:'flex', flexDirection:'column',
+                    transition:'transform .15s, box-shadow .15s',
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 6px 18px rgba(0,0,0,0.11)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.07)'; }}
+                  >
+                    {/* Product image */}
+                    <div style={{ position:'relative', height:160, background:'linear-gradient(135deg,#fdf6f0,#fdeaea)', flexShrink:0 }}>
+                      {imgSrc(p.image)
+                        ? <img src={imgSrc(p.image)} alt={p.name}
+                            style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                        : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:56, opacity:0.5 }}>🎂</div>
+                      }
+                      {/* Status badge */}
+                      <span style={{
+                        position:'absolute', top:8, right:8,
+                        background: p.is_active ? '#e8f5e9' : '#f5f5f5',
+                        color:      p.is_active ? '#2e7d32' : '#999',
+                        fontSize:10, fontWeight:700, padding:'2px 8px',
+                        borderRadius:20, textTransform:'uppercase', letterSpacing:0.3,
+                      }}>{p.is_active ? 'Actif' : 'Inactif'}</span>
+                      {/* Low stock warning */}
+                      {p.stock <= 5 && (
+                        <span style={{
+                          position:'absolute', top:8, left:8,
+                          background:'#fff3e0', color:'#e65100',
+                          fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20,
+                        }}>⚠ Faible</span>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ padding:'12px 14px', flex:1, display:'flex', flexDirection:'column', gap:4 }}>
+                      <div style={{ fontWeight:700, fontSize:14, color:'#1a1a1a', lineHeight:1.2 }}>{p.name}</div>
+                      <div style={{ fontSize:11, color:'#888', lineHeight:1.4, flex:1,
+                        overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+                        {p.description || 'Aucune description.'}
+                      </div>
+                      <div style={{ fontSize:10, color:'#bbb', marginTop:2 }}>{p.category}</div>
+
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6 }}>
+                        <span style={{ fontWeight:800, color:'#5e453a', fontSize:17 }}>{Number(p.price).toLocaleString('fr-FR')} MAD</span>
                         <div style={{ textAlign:'right' }}>
-                          <div style={{ fontSize:11, color:'#888' }}>Stock: <b>{p.stock}</b></div>
-                          <div style={{ fontSize:11, color:'#aaa' }}>{p.total_sales} ventes</div>
+                          <div style={{ fontSize:11, fontWeight:600, color: p.stock <= 5 ? '#e65100' : '#555' }}>Stock&nbsp;:&nbsp;{p.stock}</div>
+                          <div style={{ fontSize:10, color:'#bbb' }}>{p.total_sales || 0} ventes</div>
                         </div>
                       </div>
-                      {p.stock <= 5 && <div style={{ fontSize:11, color:'#f57c00', marginTop:6 }}>⚠ Stock faible — réapprovisionner</div>}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display:'flex', borderTop:'1px solid #f5f5f5' }}>
+                      <button onClick={() => openEditProduct(p)} style={{
+                        flex:1, padding:'9px 0', background:'#fff',
+                        border:'none', borderRight:'1px solid #f5f5f5',
+                        cursor:'pointer', fontSize:12, fontWeight:600, color:'#5e453a',
+                        display:'flex', alignItems:'center', justifyContent:'center', gap:4,
+                      }}>✏ Modifier</button>
+                      <button onClick={() => deleteProduct(p.id)} style={{
+                        flex:1, padding:'9px 0', background:'#fff',
+                        border:'none', cursor:'pointer',
+                        fontSize:12, fontWeight:600, color:'#c62828',
+                        display:'flex', alignItems:'center', justifyContent:'center', gap:4,
+                      }}>🗑 Supprimer</button>
                     </div>
                   </div>
                 ))}
+
+                {/* Empty state */}
+                {products.length === 0 && (
+                  <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'50px 0', color:'#aaa' }}>
+                    <div style={{ fontSize:48, marginBottom:10 }}>🍰</div>
+                    <p>Aucun produit dans le catalogue.<br/>Cliquez sur « Nouveau Produit » pour commencer.</p>
+                  </div>
+                )}
               </div>
+
+              {/* ── Add / Edit Modal ──────────────────────────── */}
+              {showModal && (
+                <ProductModal
+                  product={editProduct}
+                  error={productError}
+                  saving={savingProduct}
+                  onSave={saveProduct}
+                  onClose={closeModal}
+                />
+              )}
             </>
           )}
 
           {/* ════ CLIENTS TAB ══════════════════════════════════ */}
-          {activeNav === 'clients' && (
-            <>
-              <h1 style={{ fontSize:20, fontWeight:700, marginBottom:16 }}>Clients</h1>
-              <div style={{ background:'#fff', borderRadius:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-                <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                  <thead>
-                    <tr style={{ background:'#fafafa' }}>
-                      {['Nom','Email','Téléphone','Rôle','Commandes','Statut','Actions'].map(h=>(
-                        <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#888', borderBottom:'1px solid #f0f0f0' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map(u=>(
-                      <tr key={u.id} style={{ borderBottom:'1px solid #f8f8f8' }}>
-                        <td style={{ padding:'9px 14px' }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                            <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,#5e453a,#6c79c5)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, fontWeight:700,flexShrink:0 }}>
-                              {u.name?.charAt(0)}
-                            </div>
-                            <span style={{ fontSize:12, fontWeight:600 }}>{u.name}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding:'9px 14px', fontSize:12, color:'#666' }}>{u.email}</td>
-                        <td style={{ padding:'9px 14px', fontSize:12, color:'#666' }}>{u.phone||'—'}</td>
-                        <td style={{ padding:'9px 14px' }}>
-                          <span style={{ background: u.role==='admin'?'#fde8ea':'#e8f0fe', color: u.role==='admin'?'#c62828':'#1565c0', padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600 }}>{u.role}</span>
-                        </td>
-                        <td style={{ padding:'9px 14px', fontSize:12, color:'#666' }}>{u.orders_count||0}</td>
-                        <td style={{ padding:'9px 14px' }}>
-                          <span style={{ background: u.is_active?'#e8f5e9':'#f5f5f5', color: u.is_active?'#388e3c':'#888', padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600 }}>{u.is_active ? 'Actif' : 'Inactif'}</span>
-                        </td>
-                        <td style={{ padding:'9px 14px' }}>
-                          <div style={{ display:'flex', gap:6 }}>
-                            <button onClick={()=>toggleUser(u.id, u.is_active)} style={{ fontSize:11, padding:'3px 8px', border:'1px solid #ddd', borderRadius:5, cursor:'pointer', background:'#fff' }}>
-                              {u.is_active ? 'Désactiver' : 'Activer'}
-                            </button>
-                            {u.id !== user?.id && <button onClick={()=>deleteUser(u.id)} style={{ fontSize:11, padding:'3px 8px', border:'1px solid #fcc', borderRadius:5, cursor:'pointer', background:'#fff', color:'#c62828' }}>🗑</button>}
-                          </div>
-                        </td>
+          {activeNav === 'clients' && (() => {
+            const q = clientSearch.toLowerCase().trim();
+            const filteredUsers = q
+              ? users.filter(u =>
+                  u.name?.toLowerCase().includes(q) ||
+                  u.email?.toLowerCase().includes(q) ||
+                  u.phone?.toLowerCase().includes(q)
+                )
+              : users;
+            return (
+              <>
+                {/* Header + search bar */}
+                <div style={{ display:'flex', alignItems:'center', marginBottom:16 }}>
+                  {/* Left: Title */}
+                  <div style={{ flex: 1 }}>
+                    <h1 style={{ fontSize:20, fontWeight:700, margin:0 }}>Clients</h1>
+                  </div>
+
+                  {/* Center: Search */}
+                  <div style={{
+                    display:'flex', alignItems:'center', gap:8,
+                    background:'#fff', border:'1px solid #e0e0e0',
+                    borderRadius:8, padding:'6px 14px', width:340,
+                    boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
+                  }}>
+                    <span style={{ color:'#aaa', fontSize:14 }}>🔍</span>
+                    <input
+                      id="client-search"
+                      type="text"
+                      placeholder="Rechercher par nom, email, téléphone…"
+                      value={clientSearch}
+                      onChange={e => setClientSearch(e.target.value)}
+                      style={{ border:'none', outline:'none', fontSize:13, color:'#333', width:'100%', background:'transparent' }}
+                    />
+                    {clientSearch && (
+                      <button onClick={() => setClientSearch('')} style={{ border:'none', background:'none', cursor:'pointer', color:'#aaa', fontSize:16, padding:0, lineHeight:1 }}>×</button>
+                    )}
+                  </div>
+
+                  {/* Right: Spacer for exact centering */}
+                  <div style={{ flex: 1 }}></div>
+                </div>
+
+                {/* Result count */}
+                {clientSearch && (
+                  <div style={{ fontSize:12, color:'#888', marginBottom:10 }}>
+                    {filteredUsers.length} résultat{filteredUsers.length !== 1 ? 's' : ''} pour « {clientSearch} »
+                  </div>
+                )}
+
+                <div style={{ background:'#fff', borderRadius:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                    <thead>
+                      <tr style={{ background:'#fafafa' }}>
+                        {['Nom','Email','Téléphone','Rôle','Commandes','Statut','Actions'].map(h=>(
+                          <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#888', borderBottom:'1px solid #f0f0f0' }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+                    </thead>
+                    <tbody>
+                      {filteredUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" style={{ padding:'30px', textAlign:'center', color:'#aaa' }}>
+                            <div style={{ fontSize:36, marginBottom:8 }}>🔍</div>
+                            Aucun client trouvé pour « {clientSearch} »
+                          </td>
+                        </tr>
+                      ) : filteredUsers.map(u=>(
+                        <tr key={u.id} style={{ borderBottom:'1px solid #f8f8f8' }}>
+                          <td style={{ padding:'9px 14px' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                              <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg,#5e453a,#6c79c5)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                                {u.name?.charAt(0)}
+                              </div>
+                              <span style={{ fontSize:12, fontWeight:600 }}>{u.name}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding:'9px 14px', fontSize:12, color:'#666' }}>{u.email}</td>
+                          <td style={{ padding:'9px 14px', fontSize:12, color:'#666' }}>{u.phone||'—'}</td>
+                          <td style={{ padding:'9px 14px' }}>
+                            <span style={{ background: u.role==='admin'?'#fde8ea':'#e8f0fe', color: u.role==='admin'?'#c62828':'#1565c0', padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600 }}>{u.role}</span>
+                          </td>
+                          <td style={{ padding:'9px 14px', fontSize:12, color:'#666' }}>{u.orders_count||0}</td>
+                          <td style={{ padding:'9px 14px' }}>
+                            <span style={{ background: u.is_active?'#e8f5e9':'#f5f5f5', color: u.is_active?'#388e3c':'#888', padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600 }}>{u.is_active ? 'Actif' : 'Inactif'}</span>
+                          </td>
+                          <td style={{ padding:'9px 14px' }}>
+                            <div style={{ display:'flex', gap:6 }}>
+                              <button onClick={()=>toggleUser(u.id, u.is_active)} style={{ fontSize:11, padding:'3px 8px', border:'1px solid #ddd', borderRadius:5, cursor:'pointer', background:'#fff' }}>
+                                {u.is_active ? 'Désactiver' : 'Activer'}
+                              </button>
+                              {u.id !== user?.id && <button onClick={()=>deleteUser(u.id)} style={{ fontSize:11, padding:'3px 8px', border:'1px solid #fcc', borderRadius:5, cursor:'pointer', background:'#fff', color:'#c62828' }}>🗑</button>}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })()}
 
           {/* ════ MESSAGES TAB ══════════════════════════════════ */}
+
           {activeNav === 'messages' && (
             <>
               <h1 style={{ fontSize:20, fontWeight:700, marginBottom:16 }}>Messages & Contacts</h1>
@@ -746,4 +952,196 @@ const cardStyle = {
   background: '#fff', borderRadius: 12, padding: '16px 18px',
   boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
   position: 'relative', overflow: 'hidden',
+};
+
+/* ══════════════════════════════════════════════════════════════
+   PRODUCT MODAL  —  Add & Edit with image upload
+══════════════════════════════════════════════════════════════ */
+function ProductModal({ product, error, saving, onSave, onClose }) {
+  const isEdit = Boolean(product);
+  const fileRef = useRef(null);
+
+  const [fields, setFields] = useState({
+    name:        product?.name        || '',
+    description: product?.description || '',
+    price:       product?.price       || '',
+    stock:       product?.stock       || '',
+    category:    product?.category    || '',
+    is_active:   product?.is_active   ?? true,
+  });
+  const [imageFile, setImageFile]     = useState(null);   // new file to upload
+  const [previewUrl, setPreviewUrl]   = useState(imgSrc(product?.image) || null);
+
+  const handle = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFields(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const pickImage = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    const fd = new FormData();
+    Object.entries(fields).forEach(([k, v]) => fd.append(k, v === true ? 1 : v === false ? 0 : v));
+    if (imageFile) fd.append('image', imageFile);
+    onSave(fd, product?.id);
+  };
+
+  const CATEGORIES = ['Gâteau', 'Cupcake', 'Tarte', 'Cookie', 'Muffin', 'Cheesecake', 'Macaron', 'Autre'];
+
+  return (
+    /* Overlay */
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position:'fixed', inset:0, zIndex:1000,
+        background:'rgba(0,0,0,0.45)', backdropFilter:'blur(3px)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        padding:20,
+      }}
+    >
+      <div style={{
+        background:'#fff', borderRadius:16, width:'100%', maxWidth:560,
+        maxHeight:'90vh', overflowY:'auto',
+        boxShadow:'0 20px 60px rgba(0,0,0,0.25)',
+        animation:'fadeUp .2s ease',
+      }}>
+        {/* Modal header */}
+        <div style={{
+          padding:'18px 22px', borderBottom:'1px solid #f0f0f0',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          background:'linear-gradient(135deg,#3e2e26,#5e453a)', borderRadius:'16px 16px 0 0',
+        }}>
+          <span style={{ color:'#fff', fontWeight:700, fontSize:16 }}>
+            {isEdit ? `✏ Modifier : ${product.name}` : '➕ Nouveau Produit'}
+          </span>
+          <button onClick={onClose} style={{
+            background:'rgba(255,255,255,0.15)', border:'none', color:'#fff',
+            width:30, height:30, borderRadius:8, cursor:'pointer', fontSize:16,
+          }}>✕</button>
+        </div>
+
+        <form onSubmit={submit} style={{ padding:'22px' }}>
+          {error && (
+            <div style={{ background:'#fdecea', color:'#c62828', padding:'10px 14px', borderRadius:8, marginBottom:16, fontSize:13 }}>
+              ⚠ {error}
+            </div>
+          )}
+
+          {/* Image upload zone */}
+          <div
+            onClick={() => fileRef.current?.click()}
+            style={{
+              border:'2px dashed #e0d0c8', borderRadius:12, marginBottom:18,
+              height:170, cursor:'pointer', overflow:'hidden', position:'relative',
+              background: previewUrl ? 'transparent' : 'linear-gradient(135deg,#fdf6f0,#fdeaea)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              transition:'border-color .2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor='#5e453a'}
+            onMouseLeave={e => e.currentTarget.style.borderColor='#e0d0c8'}
+          >
+            {previewUrl
+              ? <img src={previewUrl} alt="preview" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+              : <div style={{ textAlign:'center', color:'#b8a89a' }}>
+                  <div style={{ fontSize:36, marginBottom:6 }}>📷</div>
+                  <div style={{ fontSize:12, fontWeight:600 }}>Cliquez pour ajouter une image</div>
+                  <div style={{ fontSize:11, marginTop:2 }}>JPG, PNG, WebP — max 2 Mo</div>
+                </div>
+            }
+            {previewUrl && (
+              <div style={{
+                position:'absolute', inset:0, background:'rgba(0,0,0,0)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:13, fontWeight:600, color:'#fff',
+                transition:'background .2s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.35)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(0,0,0,0)'}
+              >
+                📷 Changer l'image
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={pickImage}/>
+          </div>
+
+          {/* Fields grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+            <div style={{ gridColumn:'1/-1' }}>
+              <label style={labelStyle}>Nom du produit *</label>
+              <input name="name" value={fields.name} onChange={handle} required
+                style={inputStyle} placeholder="Ex: Gâteau Chocolat Fondant"/>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Prix (MAD) *</label>
+              <input name="price" type="number" step="0.01" min="0" value={fields.price} onChange={handle} required
+                style={inputStyle} placeholder="150"/>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Stock *</label>
+              <input name="stock" type="number" min="0" value={fields.stock} onChange={handle} required
+                style={inputStyle} placeholder="10"/>
+            </div>
+
+            <div style={{ gridColumn:'1/-1' }}>
+              <label style={labelStyle}>Catégorie *</label>
+              <select name="category" value={fields.category} onChange={handle} required style={inputStyle}>
+                <option value="">— Choisir une catégorie —</option>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div style={{ gridColumn:'1/-1' }}>
+              <label style={labelStyle}>Description</label>
+              <textarea name="description" value={fields.description} onChange={handle}
+                rows={3} style={{ ...inputStyle, resize:'vertical' }}
+                placeholder="Décrivez le produit…"/>
+            </div>
+
+            <div style={{ gridColumn:'1/-1', display:'flex', alignItems:'center', gap:10 }}>
+              <input type="checkbox" id="is-active" name="is_active"
+                checked={fields.is_active} onChange={handle}
+                style={{ width:16, height:16, cursor:'pointer', accentColor:'#5e453a' }}/>
+              <label htmlFor="is-active" style={{ fontSize:13, cursor:'pointer', userSelect:'none' }}>
+                Produit actif (visible dans le catalogue)
+              </label>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display:'flex', gap:10, marginTop:20, justifyContent:'flex-end' }}>
+            <button type="button" onClick={onClose} style={{
+              padding:'9px 20px', border:'1px solid #ddd', borderRadius:8,
+              background:'#fff', color:'#666', cursor:'pointer', fontWeight:600, fontSize:13,
+            }}>Annuler</button>
+            <button type="submit" disabled={saving} style={{
+              padding:'9px 24px', border:'none', borderRadius:8,
+              background:'linear-gradient(135deg,#5e453a,#3e2e26)',
+              color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13,
+              opacity: saving ? 0.7 : 1,
+            }}>
+              {saving ? '⏳ Enregistrement…' : (isEdit ? '✔ Sauvegarder' : '✚ Créer le produit')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const labelStyle = {
+  display:'block', fontSize:11, fontWeight:700, color:'#777',
+  marginBottom:5, textTransform:'uppercase', letterSpacing:0.3,
+};
+const inputStyle = {
+  width:'100%', padding:'9px 12px', fontSize:13, borderRadius:8,
+  border:'1px solid #e0e0e0', background:'#fafafa', outline:'none',
+  boxSizing:'border-box', fontFamily:'inherit',
 };

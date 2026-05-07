@@ -23,7 +23,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(form);
-      navigate('/dashboard');
+      navigate('/'); // Go directly to the site — user is now logged in
     } catch (err) {
       if (err.response?.status === 422) {
         setErrors(err.response.data.errors || {});

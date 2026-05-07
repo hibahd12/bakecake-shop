@@ -26,7 +26,7 @@ class AdminController extends Controller
     {
         $this->requireAdmin($request);
 
-        $now      = now();
+        $now       = now();
         $thisMonth = $now->startOfMonth()->toDateString();
 
         // Revenue

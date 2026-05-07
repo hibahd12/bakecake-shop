@@ -1,10 +1,21 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth, axios } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
+/* ─── Image URL helper (same as admin) ──────────────────────────────
+ * Products store image paths like "products/abc.jpg" on the Laravel `public` disk
+ * served at /storage/…  In dev, Vite proxies /storage → Laravel:8000.
+ */
+const BACKEND_URL = import.meta.env.VITE_API_URL || '';
+function imgSrc(path) {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  return `${BACKEND_URL}/storage/${path}`;
+}
+
 const FontStyle = () => (
   <style>{`
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
   *{box-sizing:border-box;}
   ::selection{background:#ee6166;color:#fff;}
   @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
@@ -106,18 +117,6 @@ export default function UserWebsite() {
   }
   };
 
-  /* --- Demo products if API not available --- */
-  const cakes = products.length > 0 ? products : [
-  { id:1, name:'Pinky Cream Cherry Milk',  price:90, emoji:'🎂', description:'Vanilla sponge with cherry cream', category:'gateau' },
-  { id:2, name:'Gummy Tosca Mixed Flavors', price:90, emoji:'🍰', description:'Tropical heart-shaped cake',  category:'gateau' },
-  { id:3, name:'Blushing Strawberry Cream', price:90, emoji:'🍓', description:'Dark chocolate glaze strawberry',  category:'gateau' },
-  { id:4, name:'Mystery Rose Choco',         price:90, emoji:'🧁', description:'Rich chocolate muffin surprise',  category:'cupcake' },
-  { id:5, name:'Coco Lemon Twist',           price:110, emoji:'🍋', description:'Coconut and lemon zest cake',  category:'tarte' },
-  { id:6, name:'Velvet Dream Cake',          price:130, emoji:'❤', description:'Red velvet with cream cheese',  category:'gateau' },
-  { id:7, name:'Caramel Cloud',              price:100, emoji:'🍮', description:'Salted caramel mousse',  category:'patisserie' },
-  { id:8, name:'Blueberry Burst',            price:90,  emoji:'🫐', description:'Fresh blueberry tart',  category:'tarte' },
-  ];
-
   /* -- Fake cake images from Unsplash -------------------------- */
   const cakeImages = [
   'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=240&q=70', // pink cake
@@ -129,6 +128,24 @@ export default function UserWebsite() {
   'https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=240&q=70', // caramel
   'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=240&q=70', // blueberry
   ];
+
+  /* --- Demo products if API not available --- */
+  const rawProducts = products.length > 0 ? products : [
+  { id:1, name:'Pinky Cream Cherry Milk',  price:90, emoji:'🎂', description:'Vanilla sponge with cherry cream', category:'gateau' },
+  { id:2, name:'Gummy Tosca Mixed Flavors', price:90, emoji:'🍰', description:'Tropical heart-shaped cake',  category:'gateau' },
+  { id:3, name:'Blushing Strawberry Cream', price:90, emoji:'🍓', description:'Dark chocolate glaze strawberry',  category:'gateau' },
+  { id:4, name:'Mystery Rose Choco',         price:90, emoji:'🧁', description:'Rich chocolate muffin surprise',  category:'cupcake' },
+  { id:5, name:'Coco Lemon Twist',           price:110, emoji:'🍋', description:'Coconut and lemon zest cake',  category:'tarte' },
+  { id:6, name:'Velvet Dream Cake',          price:130, emoji:'❤', description:'Red velvet with cream cheese',  category:'gateau' },
+  { id:7, name:'Caramel Cloud',              price:100, emoji:'🍮', description:'Salted caramel mousse',  category:'patisserie' },
+  { id:8, name:'Blueberry Burst',            price:90,  emoji:'🫐', description:'Fresh blueberry tart',  category:'tarte' },
+  ];
+
+  const cakes = rawProducts.map((cake, i) => ({
+    ...cake,
+    // Prefer the real uploaded image; fall back to curated Unsplash photo
+    displayImage: imgSrc(cake.image) || cakeImages[i % cakeImages.length]
+  }));
 
   const iconUser = '👤';
   const iconCart = '🛒';
@@ -172,7 +189,7 @@ export default function UserWebsite() {
 
   {/* Nav links */}
   <div style={{ display:'flex', gap:32, flex:1, alignItems:'center', marginLeft:20 }}>
-  {['Home','Cupcake','Recipes','Blog','Order online','Contact us'].map(link => {
+  {['Home','Blog','Order online','Contact us'].map(link => {
   const isActive = activePage === link.toLowerCase().replace(' ','');
   return (
   <button key={link}
@@ -254,7 +271,7 @@ export default function UserWebsite() {
   <div style={{ position:'absolute', right:80, top:'50%', transform:'translateY(-50%)', zIndex:2, display:'flex', flexDirection:'column', gap:16 }}>
   {[{num:'500+',label:'Recipes'},{num:'12K+',label:'Happy Clients'},{num:'8',label:'Years of Art'}].map(s=>(
   <div key={s.label} style={{ background:'rgba(255,255,255,0.07)', backdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:16, padding:'20px 32px', textAlign:'center' }}>
-  <div style={{ fontSize:28, fontWeight:700, color:'#f3c2b9', fontFamily:"'Cormorant Garamond',Georgia,serif" }}>{s.num}</div>
+  <div style={{ fontSize:28, fontWeight:700, color:'#f3c2b9', fontFamily:"'Playfair Display',Georgia,serif" }}>{s.num}</div>
   <div style={{ fontSize:10, color:'rgba(255,255,255,0.55)', textTransform:'uppercase', letterSpacing:2.5, marginTop:5 }}>{s.label}</div>
   </div>
   ))}
@@ -264,7 +281,7 @@ export default function UserWebsite() {
   <div style={{ width:7, height:7, borderRadius:'50%', background:'#ee6166', animation:'pulse 2s infinite' }} />
   <span style={{ color:'#f3c2b9', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:3 }}>Boutique Dessert House</span>
   </div>
-  <h1 style={{ fontSize:72, fontWeight:300, lineHeight:1.0, color:'#fff', marginBottom:28, fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:-2 }}>
+  <h1 style={{ fontSize:72, fontWeight:300, lineHeight:1.0, color:'#fff', marginBottom:28, fontFamily:"'Playfair Display',Georgia,serif", letterSpacing:-2 }}>
   Artisan Pastries<br/><em style={{ color:'#f3c2b9' }}>Delivered to You</em>
   </h1>
   <p style={{ color:'rgba(255,255,255,0.72)', fontSize:17, lineHeight:1.9, marginBottom:44, fontWeight:300, maxWidth:500 }}>Vivez le luxe de créations artisanales — préparées avec les meilleurs ingrédients marocains, façonnées avec soin et passion., meticulous detail, and an absolute passion for perfection.</p>
@@ -289,7 +306,7 @@ export default function UserWebsite() {
   <section id="menu" style={{ padding:'120px 80px', background:'#faf7f4' }}>
   <div style={{ textAlign:'center', marginBottom:72 }}>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:4, color:'#ee6166', display:'block', marginBottom:18 }}>Signature Creations</span>
-  <h2 style={{ fontSize:52, fontWeight:300, color:'#1a1a1a', fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:-1, lineHeight:1 }}>This Week's <em>Specials</em></h2>
+  <h2 style={{ fontSize:52, fontWeight:300, color:'#1a1a1a', fontFamily:"'Playfair Display',Georgia,serif", letterSpacing:-1, lineHeight:1 }}>This Week's <em>Specials</em></h2>
   <div style={{ display:'flex', alignItems:'center', gap:16, justifyContent:'center', marginTop:24 }}>
   <div style={{ height:1, width:80, background:'linear-gradient(to right,transparent,#e0d0c8)' }} />
   <div style={{ width:5, height:5, borderRadius:'50%', background:'#ee6166' }} />
@@ -298,7 +315,7 @@ export default function UserWebsite() {
   <p style={{ color:'#999', fontSize:15, maxWidth:480, margin:'20px auto 0', lineHeight:1.9, fontWeight:300 }}>Indulge in our exquisite collection of premium handcrafted pastries.</p>
   </div>
   <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:28 }}>
-  {cakes.slice(0,4).map((cake,i) => <ProductCard key={cake.id} cake={cake} image={cakeImages[i]} liked={liked[cake.id]} onLike={()=>toggleLike(cake.id)} onOrder={()=>addToCart(cake)} />)}
+  {cakes.slice(0,4).map((cake) => <ProductCard key={cake.id} cake={cake} image={cake.displayImage} liked={liked[cake.id]} onLike={()=>toggleLike(cake.id)} onOrder={()=>addToCart(cake)} />)}
   </div>
   {cakes.length > 4 && (
   <>
@@ -308,7 +325,7 @@ export default function UserWebsite() {
   <div style={{ height:1, flex:1, background:'#ede5de' }} />
   </div>
   <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:28 }}>
-  {cakes.slice(4,8).map((cake,i) => <ProductCard key={cake.id} cake={cake} image={cakeImages[i+4]||cakeImages[i]} liked={liked[cake.id]} onLike={()=>toggleLike(cake.id)} onOrder={()=>addToCart(cake)} />)}
+  {cakes.slice(4,8).map((cake) => <ProductCard key={cake.id} cake={cake} image={cake.displayImage} liked={liked[cake.id]} onLike={()=>toggleLike(cake.id)} onOrder={()=>addToCart(cake)} />)}
   </div>
   </>
   )}
@@ -322,7 +339,7 @@ export default function UserWebsite() {
   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:100, alignItems:'center' }}>
   <div>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:4, color:'#ee6166', display:'block', marginBottom:22 }}>Notre Philosophie</span>
-  <h2 style={{ fontSize:54, fontWeight:300, color:'#1a1a1a', marginBottom:28, fontFamily:"'Cormorant Garamond',Georgia,serif", lineHeight:1.0, letterSpacing:-1.5 }}>Crafted with<br/><em>Elegance</em> &amp; Care</h2>
+  <h2 style={{ fontSize:54, fontWeight:300, color:'#1a1a1a', marginBottom:28, fontFamily:"'Playfair Display',Georgia,serif", lineHeight:1.0, letterSpacing:-1.5 }}>Crafted with<br/><em>Elegance</em> &amp; Care</h2>
   <p style={{ color:'#777', fontSize:15, lineHeight:1.95, marginBottom:24, fontWeight:300 }}>Every cake is meticulously handcrafted by our expert pastry chefs. We believe in creating unforgettable, elegant taste experiences.</p>
   <p style={{ color:'#bbb', fontSize:14, lineHeight:1.9, marginBottom:44, fontWeight:300 }}>Born in Casablanca, loved across Morocco  our philosophy is simple: every bite should feel like a celebration.</p>
   <button style={{ padding:'17px 44px', background:'transparent', color:'#1a1a1a', border:'1px solid rgba(26,26,26,0.5)', fontWeight:600, fontSize:10, cursor:'pointer', letterSpacing:2.5, textTransform:'uppercase', transition:'all 0.35s' }} onMouseEnter={e=>{e.currentTarget.style.background='#1a1a1a';e.currentTarget.style.color='#fff';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#1a1a1a';}}>En Savoir Plus</button>
@@ -348,7 +365,7 @@ export default function UserWebsite() {
   <section style={{ background:'#111', padding:'110px 80px' }}>
   <div style={{ textAlign:'center', marginBottom:72 }}>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:4, color:'#ee6166', display:'block', marginBottom:18 }}>Avis de nos Clients</span>
-  <h2 style={{ fontSize:48, fontWeight:300, color:'#fff', fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:-1 }}>What Our Guests <em style={{color:'#f3c2b9'}}>Say</em></h2>
+  <h2 style={{ fontSize:48, fontWeight:300, color:'#fff', fontFamily:"'Playfair Display',Georgia,serif", letterSpacing:-1 }}>What Our Guests <em style={{color:'#f3c2b9'}}>Say</em></h2>
   </div>
   <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24, maxWidth:1100, margin:'0 auto' }}>
   {[
@@ -380,7 +397,7 @@ export default function UserWebsite() {
   </div>
   <div>
   <div style={{ fontWeight:600, fontSize:11, marginBottom:24, textTransform:'uppercase', letterSpacing:2, color:'rgba(255,255,255,0.5)' }}>Menu</div>
-  {['Cupcake','Recipes','Blog','Order Online','Contact'].map(l=>(<div key={l} onClick={()=>{window.scrollTo(0,0);setActivePage(l.toLowerCase().replace(' ',''));}} style={{ color:'rgba(255,255,255,0.4)', fontSize:13, marginBottom:12, cursor:'pointer', transition:'color 0.2s', fontWeight:300 }} onMouseEnter={e=>e.currentTarget.style.color='#ee6166'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.4)'}>{l}</div>))}
+  {['Blog','Order Online','Contact'].map(l=>(<div key={l} onClick={()=>{window.scrollTo(0,0);setActivePage(l.toLowerCase().replace(' ',''));}} style={{ color:'rgba(255,255,255,0.4)', fontSize:13, marginBottom:12, cursor:'pointer', transition:'color 0.2s', fontWeight:300 }} onMouseEnter={e=>e.currentTarget.style.color='#ee6166'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.4)'}>{l}</div>))}
   </div>
   <div>
   <div style={{ fontWeight:600, fontSize:11, marginBottom:24, textTransform:'uppercase', letterSpacing:2, color:'rgba(255,255,255,0.5)' }}>Atelier</div>
@@ -405,11 +422,11 @@ export default function UserWebsite() {
   {activePage === 'cart' && (
   <div style={{ padding:'140px 80px 80px', background:'#faf7f4', minHeight:'100vh' }}>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:4, color:'#ee6166', display:'block', marginBottom:16 }}>Your Selection</span>
-  <h2 style={{ fontSize:48, fontWeight:300, marginBottom:48, color:'#1a1a1a', fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:-1 }}>Mon Panier</h2>
+  <h2 style={{ fontSize:48, fontWeight:300, marginBottom:48, color:'#1a1a1a', fontFamily:"'Playfair Display',Georgia,serif", letterSpacing:-1 }}>Mon Panier</h2>
   {cartItems.length === 0 ? (
   <div style={{ textAlign:'center', padding:'100px 0', background:'#fff', border:'1px solid rgba(238,97,102,0.1)' }}>
   <div style={{ fontSize:64, marginBottom:20, color:'#e0d0c8' }}>&#128717;</div>
-  <h3 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:28, fontWeight:300, color:'#1a1a1a', marginBottom:12 }}>Your bag is empty</h3>
+  <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:300, color:'#1a1a1a', marginBottom:12 }}>Your bag is empty</h3>
   <p style={{ color:'#999', fontWeight:300, marginBottom:32 }}>Discover our handcrafted collection and add your favourites.</p>
   <button onClick={()=>setActivePage('home')} style={{ padding:'16px 40px', background:'#1a1a1a', color:'#fff', border:'none', fontWeight:600, cursor:'pointer', fontSize:11, letterSpacing:2, textTransform:'uppercase' }}>Parcourir le Menu</button>
   </div>
@@ -418,7 +435,9 @@ export default function UserWebsite() {
   <div style={{ background:'#fff', border:'1px solid #f0ece8' }}>
   {cartItems.map((item,idx)=>(
   <div key={item.id} style={{ display:'flex', alignItems:'center', gap:20, padding:'24px 28px', borderBottom: idx<cartItems.length-1?'1px solid #f8f5f2':'none' }}>
-  <div style={{ width:72, height:72, background:'linear-gradient(135deg,#fceee9,#f3c2b9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#ee6166', flexShrink:0, border:'1px solid #f0ece8', textTransform:'uppercase', letterSpacing:1 }}>Cake</div>
+  <div style={{ width:72, height:72, flexShrink:0, border:'1px solid #f0ece8', overflow:'hidden', borderRadius:'4px' }}>
+  <img src={imgSrc(item.image) || item.displayImage || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=240&q=70'} alt={item.name} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+  </div>
   <div style={{ flex:1 }}>
   <div style={{ fontWeight:600, fontSize:15, marginBottom:4, color:'#1a1a1a' }}>{item.name}</div>
   <div style={{ color:'#bbb', fontSize:12, fontWeight:300 }}>{item.price} MAD per piece</div>
@@ -439,7 +458,7 @@ export default function UserWebsite() {
   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:28, fontSize:13, color:'#777' }}>
   <span>Livraison</span><span>30 MAD</span>
   </div>
-  <div style={{ display:'flex', justifyContent:'space-between', fontWeight:700, fontSize:18, paddingTop:16, borderTop:'1px solid #f8f5f2', marginBottom:28, fontFamily:"'Cormorant Garamond',serif" }}>
+  <div style={{ display:'flex', justifyContent:'space-between', fontWeight:700, fontSize:18, paddingTop:16, borderTop:'1px solid #f8f5f2', marginBottom:28, fontFamily:"'Playfair Display',serif" }}>
   <span>Total</span><span style={{ color:'#ee6166' }}>{cartItems.reduce((s,i)=>s+i.price*i.qty,0)+30} MAD</span>
   </div>
   <div style={{ background:'#faf7f4', border:'1px solid #f0ece8', padding:'12px 16px', marginBottom:24, fontSize:12, color:'#888', display:'flex', alignItems:'center', gap:8 }}>
@@ -460,7 +479,7 @@ export default function UserWebsite() {
   <div style={{ background:'#fff', padding:'64px 56px', maxWidth:460, width:'100%', textAlign:'center', border:'1px solid rgba(238,97,102,0.15)' }}>
   <div style={{ fontSize:56, marginBottom:24 }}>&#9989;</div>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:3, color:'#ee6166', display:'block', marginBottom:16 }}>Confirmed</span>
-  <h2 style={{ fontSize:38, fontWeight:300, marginBottom:18, color:'#1a1a1a', fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:-0.5 }}>Commande Validée !</h2>
+  <h2 style={{ fontSize:38, fontWeight:300, marginBottom:18, color:'#1a1a1a', fontFamily:"'Playfair Display',Georgia,serif", letterSpacing:-0.5 }}>Commande Validée !</h2>
   <p style={{ color:'#999', fontSize:14, marginBottom:40, lineHeight:1.8, fontWeight:300 }}>
   Merci pour votre confiance. Votre commande avec <strong style={{color:'#1a1a1a'}}>Paiement à la livraison</strong> est préparée avec le plus grand soin.
   </p>
@@ -476,11 +495,11 @@ export default function UserWebsite() {
   <div style={{ padding:'140px 80px 80px', minHeight:'100vh', background:'#faf7f4' }}>
   <div style={{ maxWidth:860, margin:'0 auto' }}>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:4, color:'#ee6166', display:'block', marginBottom:16 }}>Your Purchases</span>
-  <h2 style={{ fontSize:48, fontWeight:300, marginBottom:56, color:'#1a1a1a', fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:-1 }}>Suivi de Commandes</h2>
+  <h2 style={{ fontSize:48, fontWeight:300, marginBottom:56, color:'#1a1a1a', fontFamily:"'Playfair Display',Georgia,serif", letterSpacing:-1 }}>Suivi de Commandes</h2>
   {myOrders.length === 0 ? (
   <div style={{ textAlign:'center', padding:'100px 0', background:'#fff', border:'1px solid rgba(238,97,102,0.1)' }}>
   <div style={{ fontSize:48, marginBottom:20, color:'#e0d0c8' }}>&#128230;</div>
-  <h3 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:28, fontWeight:300, color:'#1a1a1a', marginBottom:12 }}>No orders yet</h3>
+  <h3 style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:300, color:'#1a1a1a', marginBottom:12 }}>No orders yet</h3>
   <p style={{ color:'#aaa', fontWeight:300, marginBottom:32 }}>Discover our collection and place your first order.</p>
   <button onClick={()=>setActivePage('home')} style={{ padding:'16px 40px', background:'#1a1a1a', color:'#fff', border:'none', fontWeight:600, cursor:'pointer', fontSize:11, letterSpacing:2, textTransform:'uppercase' }}>Parcourir notre Menu</button>
   </div>
@@ -493,7 +512,7 @@ export default function UserWebsite() {
   <div style={{ color:'#bbb', fontSize:12, fontWeight:300 }}>{new Date(order.created_at).toLocaleDateString('fr-FR')} - {order.items?.length||0} items</div>
   </div>
   <div style={{ textAlign:'right' }}>
-  <div style={{ fontWeight:300, fontSize:24, color:'#1a1a1a', marginBottom:12, fontFamily:"'Cormorant Garamond',serif" }}>{Number(order.total_amount)} MAD</div>
+  <div style={{ fontWeight:300, fontSize:24, color:'#1a1a1a', marginBottom:12, fontFamily:"'Playfair Display',serif" }}>{Number(order.total_amount)} MAD</div>
   <span style={{ background: order.status==='delivered'?'#e8f5e9':order.status==='cancelled'?'#fdecea':'#fef6e5', color: order.status==='delivered'?'#2e7d32':order.status==='cancelled'?'#c62828':'#f57f17', padding:'5px 12px', fontSize:10, fontWeight:700, letterSpacing:1.5, textTransform:'uppercase' }}>
   {order.status || 'Pending'}
   </span>
@@ -506,12 +525,12 @@ export default function UserWebsite() {
   </div>
   )}
 
-  {/* MENU PAGE (Cupcake / Order Online) */}
-  {['cupcake','orderonline'].includes(activePage) && (
+  {/* MENU PAGE (Order Online) */}
+  {activePage === 'orderonline' && (
   <div style={{ padding:'140px 80px 80px', background:'#faf7f4', minHeight:'100vh' }}>
   <div style={{ textAlign:'center', marginBottom:64 }}>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:4, color:'#ee6166', display:'block', marginBottom:18 }}>Our Collection</span>
-  <h2 style={{ fontSize:54, fontWeight:300, color:'#1a1a1a', fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:-1 }}>Menu <em>Boutique</em></h2>
+  <h2 style={{ fontSize:54, fontWeight:300, color:'#1a1a1a', fontFamily:"'Playfair Display',Georgia,serif", letterSpacing:-1 }}>Menu <em>Boutique</em></h2>
   <div style={{ display:'flex', alignItems:'center', gap:16, justifyContent:'center', marginTop:24 }}>
   <div style={{ height:1, width:80, background:'linear-gradient(to right,transparent,#e0d0c8)' }} />
   <div style={{ width:5, height:5, borderRadius:'50%', background:'#ee6166' }} />
@@ -519,8 +538,8 @@ export default function UserWebsite() {
   </div>
   </div>
   <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:28 }}>
-  {cakes.map((cake, i) => (
-  <ProductCard key={cake.id} cake={cake} image={cakeImages[i%cakeImages.length]} liked={liked[cake.id]} onLike={()=>toggleLike(cake.id)} onOrder={()=>addToCart(cake)} />
+  {cakes.map((cake) => (
+  <ProductCard key={cake.id} cake={cake} image={cake.displayImage} liked={liked[cake.id]} onLike={()=>toggleLike(cake.id)} onOrder={()=>addToCart(cake)} />
   ))}
   </div>
   </div>
@@ -531,7 +550,7 @@ export default function UserWebsite() {
   <div style={{ padding:'140px 80px 80px', background:'#faf7f4', minHeight:'100vh' }}>
   <div style={{ textAlign:'center', marginBottom:64 }}>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:4, color:'#ee6166', display:'block', marginBottom:18 }}>Editorial</span>
-  <h2 style={{ fontSize:54, fontWeight:300, color:'#1a1a1a', fontFamily:"'Cormorant Garamond',Georgia,serif", letterSpacing:-1 }}>
+  <h2 style={{ fontSize:54, fontWeight:300, color:'#1a1a1a', fontFamily:"'Playfair Display',Georgia,serif", letterSpacing:-1 }}>
   {activePage === 'recipes' ? 'Recettes & Savoir-Faire' : 'Journal de la Boutique'}
   </h2>
   <div style={{ display:'flex', alignItems:'center', gap:16, justifyContent:'center', marginTop:24 }}>
@@ -542,17 +561,29 @@ export default function UserWebsite() {
   </div>
   <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:40 }}>
   {[
-  {title:"L'Art de la Crème au Beurre Marocaine", date:"12 Oct 2025", img:"https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=500&q=80"},
-  {title:"Le Safran du Maroc en Pâtisserie",  date:"28 Sep 2025", img:"https://images.unsplash.com/photo-1615837197154-2e801f41b4b1?w=500&q=80"},
-  {title:"La Tarte au Citron de Marrakech",  date:"15 Sep 2025", img:"https://images.unsplash.com/photo-1519869325930-281384150729?w=500&q=80"},
+  {title:"L'Art de la Crème au Beurre Marocaine", date:"12 Oct 2025", img:"https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&q=80", desc:"Discover the secrets behind our most exclusive creations. A detailed look into our pastry chefs' favourite techniques."},
+  {title:"Le Safran du Maroc en Pâtisserie",  date:"28 Sep 2025", img:"https://images.unsplash.com/photo-1535141192574-5d4897c12636?w=500&q=80", desc:"Explore how we integrate the world's most luxurious spice into our daily bakes to create unique flavor profiles."},
+  {title:"La Tarte au Citron de Marrakech",  date:"15 Sep 2025", img:"https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=500&q=80", desc:"Our signature lemon tart blends the zesty freshness of Marrakech lemons with a perfect buttery crust."},
+  {title:"Les Secrets de la Fleur d'Oranger", date:"03 Sep 2025", img:"https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=500&q=80", desc:"How orange blossom water elevates our cakes, adding a fragrant, traditional Moroccan touch to modern desserts."},
+  {title:"L'Amande de l'Atlas", date:"18 Aug 2025", img:"https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&q=80", desc:"A journey to the Atlas mountains to source the finest almonds that form the base of our premium creations."},
+  {title:"L'Heure du Thé à la Menthe", date:"05 Aug 2025", img:"https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=500&q=80", desc:"The perfect pairings: which of our artisanal pastries best accompany your traditional afternoon mint tea."},
+  {title:"Le Miel de Thym: Or Liquide", date:"21 Jul 2025", img:"https://images.unsplash.com/photo-1607478900766-efe13248b125?w=500&q=80", desc:"We explore the unique, aromatic properties of wild thyme honey and how it naturally sweetens our finest desserts."},
+  {title:"Nos Pâtisseries Sans Gluten", date:"14 Jul 2025", img:"https://images.unsplash.com/photo-1550617931-e17a7b70dce2?w=500&q=80", desc:"Delicious doesn't have to mean gluten. Discover our new range of gluten-free cakes that never compromise on taste."},
+  {title:"L'Histoire de la Corne de Gazelle", date:"02 Jul 2025", img:"https://images.unsplash.com/photo-1579372786545-d24232daf58c?w=500&q=80", desc:"A deep dive into the rich history of Morocco's most iconic sweet, and our modern, delicate take on the classic recipe."},
+  {title:"L'Alliance Choco-Orange", date:"18 Jun 2025", img:"https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?w=500&q=80", desc:"Dark artisanal chocolate meets the vibrant zest of local Moroccan oranges in a symphony of bold flavors."},
+  {title:"L'Art du Glaçage Miroir", date:"05 Jun 2025", img:"https://images.unsplash.com/photo-1488477181946-6428a0291777?w=500&q=80", desc:"The meticulous technique behind our flawlessly smooth mirror glazes that give our celebration cakes their luxurious shine."},
+  {title:"La Noix de Coco Exotique", date:"22 May 2025", img:"https://images.unsplash.com/photo-1483695028939-5bb13f8648b0?w=500&q=80", desc:"Bringing a tropical twist to traditional bakes. How we incorporate toasted coconut into our light, airy sponges."},
+  {title:"Dattes Medjool: Trésor du Désert", date:"10 May 2025", img:"https://images.unsplash.com/photo-1514056052883-d017fddd0426?w=500&q=80", desc:"Sourcing the finest Medjool dates to create naturally sweet, rich, and gooey centers for our signature cakes."},
+  {title:"L'Éclat Vert de la Pistache", date:"28 Apr 2025", img:"https://images.unsplash.com/photo-1551024601-bec78aea704b?w=500&q=80", desc:"From vibrant green garnishes to deeply flavorful pastes, the pistachio is the unsung hero of our premium nut collection."},
+  {title:"Tendances Pâtissières 2026", date:"15 Apr 2025", img:"https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=500&q=80", desc:"A look ahead at the flavor profiles and minimalist cake designs that will dominate the dessert world this year."},
   ].map(article => (
   <div key={article.title} style={{ cursor:'pointer', transition:'transform 0.35s' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-6px)'} onMouseLeave={e=>e.currentTarget.style.transform=''}>
   <div style={{ overflow:'hidden', marginBottom:24 }}>
   <img src={article.img} alt={article.title} style={{ width:'100%', height:280, objectFit:'cover', transition:'transform 0.6s', display:'block' }} onMouseEnter={e=>e.target.style.transform='scale(1.04)'} onMouseLeave={e=>e.target.style.transform='scale(1)'} />
   </div>
   <div style={{ color:'#ee6166', fontSize:10, textTransform:'uppercase', letterSpacing:2.5, marginBottom:12, fontWeight:700 }}>{article.date}</div>
-  <h3 style={{ fontSize:24, fontFamily:"'Cormorant Garamond',serif", color:'#1a1a1a', marginBottom:14, fontWeight:400, letterSpacing:-0.3 }}>{article.title}</h3>
-  <p style={{ color:'#999', fontSize:13, lineHeight:1.8, fontWeight:300 }}>Discover the secrets behind our most exclusive creations. A detailed look into our pastry chefs' favourite techniques.</p>
+  <h3 style={{ fontSize:24, fontFamily:"'Playfair Display',serif", color:'#1a1a1a', marginBottom:14, fontWeight:400, letterSpacing:-0.3 }}>{article.title}</h3>
+  <p style={{ color:'#999', fontSize:13, lineHeight:1.8, fontWeight:300 }}>{article.desc}</p>
   <div style={{ marginTop:20, color:'#1a1a1a', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:2, borderBottom:'1px solid #1a1a1a', display:'inline-block', paddingBottom:3 }}>Lire la Suite</div>
   </div>
   ))}
@@ -566,7 +597,7 @@ export default function UserWebsite() {
   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:100, maxWidth:1100, margin:'0 auto' }}>
   <div>
   <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:4, color:'#ee6166', display:'block', marginBottom:22 }}>Contactez-nous</span>
-  <h2 style={{ fontSize:52, fontWeight:300, color:'#1a1a1a', marginBottom:28, fontFamily:"'Cormorant Garamond',Georgia,serif", lineHeight:1.0, letterSpacing:-1.5 }}>
+  <h2 style={{ fontSize:52, fontWeight:300, color:'#1a1a1a', marginBottom:28, fontFamily:"'Playfair Display',Georgia,serif", lineHeight:1.0, letterSpacing:-1.5 }}>
   {"Parlons de"}
   <br /><em>{"Votre Prochain Événement"}</em>
   </h2>
@@ -581,7 +612,7 @@ export default function UserWebsite() {
   ))}
   </div>
   <div style={{ background:'#faf7f4', padding:'48px 44px', border:'1px solid rgba(238,97,102,0.1)' }}>
-  <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:28, fontWeight:400, color:'#1a1a1a', marginBottom:36, letterSpacing:-0.3 }}>Envoyer un Message</div>
+  <div style={{ fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:400, color:'#1a1a1a', marginBottom:36, letterSpacing:-0.3 }}>Envoyer un Message</div>
   {['Name','Email'].map(field=>(
   <div key={field} style={{ marginBottom:20 }}>
   <label style={{ display:'block', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:2, color:'#999', marginBottom:10 }}>{field}</label>
@@ -629,7 +660,7 @@ function ProductCard({ cake, image, liked, onLike, onOrder }) {
   <button onClick={onLike} style={{ position:'absolute', top:14, right:14, background:'rgba(255,255,255,0.92)', backdropFilter:'blur(6px)', border:'none', borderRadius:'50%', width:38, height:38, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, transition:'all 0.25s', boxShadow: liked?'0 4px 12px rgba(238,97,102,0.3)':'none' }}>{liked ? 'd' : '🤍'}</button>
   </div>
   <div style={{ padding:'24px 22px 22px' }}>
-  <div style={{ fontWeight:400, fontSize:17, textAlign:'center', color:'#1a1a1a', marginBottom:6, fontFamily:"'Cormorant Garamond',Georgia,serif" }}>{cake.name}</div>
+  <div style={{ fontWeight:400, fontSize:17, textAlign:'center', color:'#1a1a1a', marginBottom:6, fontFamily:"'Playfair Display',Georgia,serif" }}>{cake.name}</div>
   <div style={{ textAlign:'center', fontWeight:300, fontSize:12, color:'#bbb', marginBottom:20, textTransform:'uppercase', letterSpacing:2 }}>{cake.price} MAD</div>
   <button onClick={onOrder} style={{
   width:'100%', padding:'13px',

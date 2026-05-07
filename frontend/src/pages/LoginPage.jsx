@@ -65,7 +65,7 @@ export default function LoginPage() {
           <div style={{ fontSize:13, fontWeight:600, color:'#888', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>
             Bienvenue sur
           </div>
-          <div style={{ fontFamily:"Georgia,serif", fontSize:28, fontWeight:700, color:'#5e453a' }}>
+          <div style={{ fontFamily:"'Playfair Display',Georgia,serif", fontSize:28, fontWeight:700, color:'#5e453a' }}>
             Cake shop
           </div>
           <div style={{ fontSize:13, color:'#aaa', marginTop:4 }}>Connectez-vous à votre compte</div>
@@ -102,7 +102,7 @@ export default function LoginPage() {
 
           <div style={{ marginBottom:28 }}>
             <label style={{ fontSize:12, fontWeight:600, color:'#555', display:'block', marginBottom:6 }}>
-              Mot de passe
+              Mot de passe 
             </label>
             <input
               id="login-password"
