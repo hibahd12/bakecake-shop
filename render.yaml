@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: bakecake-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_NAME
+        value: BakeCake
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        fromDatabase:
+          name: bakecake-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: bakecake-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: bakecake-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: bakecake-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: bakecake-db
+          property: password
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: CACHE_STORE
+        value: array
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: MAIL_MAILER
+        value: log
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: LOG_LEVEL
+        value: error
+
+databases:
+  - name: bakecake-db
+    databaseName: bakecake
+    user: bakecake_user
+    plan: free
